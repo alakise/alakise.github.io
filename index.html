@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8-bit Space Invaders Portfolio</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #game-canvas {
+            border: 4px solid #fff;
+            image-rendering: pixelated;
+        }
+
+        #about-btn, #play-again-btn {
+            padding: 10px;
+            background-color: #0f0;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        #about-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+
+        #play-again-btn {
+            display: none;
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #about-dialog {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-5deg);
+            background-color: #000;
+            border: 4px solid #0f0;
+            padding: 20px;
+            z-index: 10;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        #close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #f00;
+            color: #fff;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+        }
+        #cv-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px;
+            background-color: #0f0;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        <button id="about-btn">About Me</button>
+        <button id="play-again-btn">Play Again</button>
+        <button id="cv-btn">View CV</button>
+    </div>
+
+    <div id="about-dialog">
+        <h2>About Me</h2>
+        <p>Hello! I'm a passionate full-stack web developer. This is a simple Space Invaders game written with pure HTML, CSS, Javascript.</p>
+        <p>Feel free to explore the Space Invaders game and check out my other projects!</p>
+        <button id="close-btn">Close</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const aboutBtn = document.getElementById('about-btn');
+        const aboutDialog = document.getElementById('about-dialog');
+        const closeBtn = document.getElementById('close-btn');
+        const playAgainBtn = document.getElementById('play-again-btn');
+
+        // Game variables
+        let player, enemies, bullets, gameLoop, gameOver, gameWon;
+        const playerWidth = 40;
+        const playerHeight = 40;
+        const enemyWidth = 40;
+        const enemyHeight = 40;
+        const bulletWidth = 4;
+        const bulletHeight = 10;
+
+        // SVG shapes
+        const playerSVG = `
+            <svg fill="#0f0" width="${playerWidth}px" height="${playerHeight}px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4,23a1,1,0,0,0,1-1V20H7v2a1,1,0,0,0,2,0V20.228a17.471,17.471,0,0,0,2,.232V22a1,1,0,0,0,2,0V20.46a17.471,17.471,0,0,0,2-.232V22a1,1,0,0,0,2,0V20h2v2a1,1,0,0,0,2,0V13a1,1,0,0,0-.4-.8L17,9.5V8a7.034,7.034,0,0,0-2.8-5.6L12.6,1.2a1,1,0,0,0-1.2,0L9.8,2.4A7.034,7.034,0,0,0,7,8V9.5L3.4,12.2A1,1,0,0,0,3,13v9A1,1,0,0,0,4,23ZM17,12l2,1.5V18H17ZM9,8a5.025,5.025,0,0,1,2-4l1-.75L13,4h0a5.025,5.025,0,0,1,2,4V18.2a15.446,15.446,0,0,1-2,.243V16a1,1,0,0,0-2,0v2.442A15.446,15.446,0,0,1,9,18.2ZM5,13.5,7,12v6H5Z"/>
+            </svg>
+        `;
+
+        const enemySVG = `
+            <svg fill="#f00" width="${enemyWidth}px" height="${enemyHeight}px" viewBox="0 -0.5 33 33" version="1.1" xmlns="http://www.w3.org/2000/svg">
+                <path d="M29.963 24.982v-5.947h-2.91v5.969h-3.037v2.953h-7.048v-2.975h7.048v-2.972h-14.991v2.973l6.030 0.021v2.973h-6.051v-2.951h-3.036v-6.010h-2.911v5.947h-3.057v-9.004h2.995v-2.891h2.973v-3.057h3.057v-2.994h2.994v3.003l8.983 0.024v-3.027h2.994v3.036h3.057v2.974h2.953v2.973h3.014v8.982h-3.057zM12.019 13.005h-2.994v2.995h2.994v-2.995zM23.996 13.005h-2.994v2.995h2.994v-2.995zM5.968 4.023h3.057v2.994h-3.057v-2.994zM27.053 4.023v2.994h-3.057v-2.994h3.057z"/>
+            </svg>
+        `;
+
+        // Initialize game
+        function init() {
+            player = {
+                x: canvas.width / 2 - playerWidth / 2,
+                y: canvas.height - playerHeight - 10,
+                speed: 5
+            };
+
+            enemies = [];
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 8; j++) {
+                    enemies.push({
+                        x: j * (enemyWidth + 20) + 60,
+                        y: i * (enemyHeight + 20) + 50,
+                        speed: 1,
+                        direction: 1
+                    });
+                }
+            }
+
+            bullets = [];
+            gameOver = false;
+            gameWon = false;
+            playAgainBtn.style.display = 'none';
+        }
+
+        // Draw functions
+        function drawSVG(svgString, x, y, width, height) {
+            const img = new Image();
+            img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+            ctx.drawImage(img, x, y, width, height);
+        }
+
+        function drawPlayer() {
+            drawSVG(playerSVG, player.x, player.y, playerWidth, playerHeight);
+        }
+
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                drawSVG(enemySVG, enemy.x, enemy.y, enemyWidth, enemyHeight);
+            });
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = '#fff';
+            bullets.forEach(bullet => {
+                ctx.fillRect(bullet.x, bullet.y, bulletWidth, bulletHeight);
+            });
+        }
+
+        // Update functions
+        function updatePlayer() {
+            if (keys.ArrowLeft && player.x > 0) {
+                player.x -= player.speed;
+            }
+            if (keys.ArrowRight && player.x < canvas.width - playerWidth) {
+                player.x += player.speed;
+            }
+        }
+
+        function updateEnemies() {
+            let changeDirection = false;
+            enemies.forEach(enemy => {
+                enemy.x += enemy.speed * enemy.direction;
+                if (enemy.x <= 0 || enemy.x >= canvas.width - enemyWidth) {
+                    changeDirection = true;
+                }
+            });
+
+            if (changeDirection) {
+                enemies.forEach(enemy => {
+                    enemy.y += enemyHeight / 2;
+                    enemy.direction *= -1;
+                });
+            }
+        }
+
+        function updateBullets() {
+            bullets.forEach((bullet, index) => {
+                bullet.y -= bullet.speed;
+                if (bullet.y < 0) {
+                    bullets.splice(index, 1);
+                }
+            });
+        }
+
+        // Collision detection
+        function checkCollisions() {
+            bullets.forEach((bullet, bIndex) => {
+                enemies.forEach((enemy, eIndex) => {
+                    if (
+                        bullet.x < enemy.x + enemyWidth &&
+                        bullet.x + bulletWidth > enemy.x &&
+                        bullet.y < enemy.y + enemyHeight &&
+                        bullet.y + bulletHeight > enemy.y
+                    ) {
+                        bullets.splice(bIndex, 1);
+                        enemies.splice(eIndex, 1);
+                    }
+                });
+            });
+
+            enemies.forEach(enemy => {
+                if (
+                    enemy.x < player.x + playerWidth &&
+                    enemy.x + enemyWidth > player.x &&
+                    enemy.y < player.y + playerHeight &&
+                    enemy.y + enemyHeight > player.y
+                ) {
+                    gameOver = true;
+                }
+            });
+        }
+
+        // Game loop
+        function update() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (!gameOver && !gameWon) {
+                updatePlayer();
+                updateEnemies();
+                updateBullets();
+                checkCollisions();
+
+                drawPlayer();
+                drawEnemies();
+                drawBullets();
+
+                if (enemies.length === 0) {
+                    gameWon = true;
+                }
+
+                gameLoop = requestAnimationFrame(update);
+            } else {
+                if (gameWon) {
+                    ctx.fillStyle = '#0f0';
+                    ctx.font = '30px "Press Start 2P"';
+                    ctx.fillText('You Win!', canvas.width / 2 - 80, canvas.height / 2);
+                } else {
+                    ctx.fillStyle = '#f00';
+                    ctx.font = '30px "Press Start 2P"';
+                    ctx.fillText('Game Over', canvas.width / 2 - 100, canvas.height / 2);
+                }
+                playAgainBtn.style.display = 'block';
+                cancelAnimationFrame(gameLoop);
+            }
+        }
+
+        // Key handlers
+        const keys = {};
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Space' && !gameOver && !gameWon) {
+                bullets.push({
+                    x: player.x + playerWidth / 2 - bulletWidth / 2,
+                    y: player.y,
+                    speed: 7
+                });
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // About dialog handlers
+        aboutBtn.addEventListener('click', () => {
+            aboutDialog.style.display = 'block';
+            cancelAnimationFrame(gameLoop);
+        });
+
+        closeBtn.addEventListener('click', () => {
+            aboutDialog.style.display = 'none';
+            if (!gameOver && !gameWon) {
+                gameLoop = requestAnimationFrame(update);
+            }
+        });
+
+        // Play Again button handler
+        playAgainBtn.addEventListener('click', () => {
+            init();
+            gameLoop = requestAnimationFrame(update);
+        });
+        
+        // "Show CV" button handler
+        document.getElementById('cv-btn').addEventListener('click', () => {
+            window.open('cv.html', '_blank');
+        });
+
+
+        // Start the game
+        init();
+        gameLoop = requestAnimationFrame(update);
+    </script>
+</body>
+</html>
